@@ -1,0 +1,81 @@
+﻿@page "/order"
+@using Business.Repository.IRepository
+@using Models
+@inject IOrderRepo orderRepo
+@inject IJSRuntime jsRuntime
+@inject NavigationManager navMan
+
+
+@if (!IsLoading)
+{
+    <div class="row mt-4">
+        <div class="col-8">
+            <h4 class="carFeatured-title text-info"> Orders</h4>
+        </div>
+    </div>
+    <div class="row mt-4">
+        <div class="col-12">
+            <table class="table table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Start date</th>
+                        <th>End date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Orders.Any())
+                    {
+                        foreach (var order in Orders)
+                        {
+                    <tr>
+                        <td>
+                            @order.Name
+                        </td>
+                        <td>
+                            @order.Email
+                        </td>
+                        <td>
+                            @order.StartDate
+                        </td>
+                        <td>
+                            @order.EndDate
+                        </td>
+                        <td>
+                            @order.Status
+                        </td>
+                        <td>
+                            <NavLink href="@($"order/edit/{order.Id}")" class="btn btn-primary">Edit</NavLink>
+                        </td>
+                    </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td>No orders.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <p>loading...</p>
+}
+
+
+
+@code {
+    private IEnumerable<OrderDTO> Orders { get; set; } = new List<OrderDTO>();
+    private bool IsLoading { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        IsLoading = true;
+        Orders = await orderRepo.GetOrders();
+        IsLoading = false;
+    }
+}

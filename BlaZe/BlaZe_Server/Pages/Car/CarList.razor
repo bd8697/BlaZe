@@ -1,0 +1,110 @@
+﻿@page "/car"
+@using Models
+@using Service.IService
+@using Business.Repository.IRepository
+@using Shared
+@inject ICarRepo CarRepo
+@inject IJSRuntime IJsRuntime
+@inject IFileUpload FileUpload
+@inject NavigationManager NavigationManager
+@attribute [Authorize(Roles = "Admin")]
+
+<div class="row mt-4">
+    <div class="col-8">
+        <h4 class="card-title text-info"> Cars</h4>
+    </div>
+    <div class="col-3 offset-1">
+        <NavLink href="car/create" class=" btn btn-info form-control">
+            Add car
+        </NavLink>
+    </div>
+</div>
+<div class="row mt-4">
+    <div class="col-12">
+        <table class="table table-bordered table-hover">
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>Description</th>
+                    <th>IsManual</th>
+                    <th>Seats</th>
+                    <th>Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Cars.Any())
+                {
+                    foreach (var car in Cars)
+                    {
+                <tr>
+                    <td>
+                        @car.Name
+                    </td>
+                    <td>
+                        @car.Details
+                    </td>
+                    <td>
+                        @car.IsManual
+                    </td>
+                    <td>
+                        @car.Seats
+                    </td>
+                    <td>
+                        @car.Price
+                    </td>
+                    <td>
+                        <NavLink href="@($"car/edit/{car.Id}")" class="btn btn-primary">Edit</NavLink>
+                        <button class="btn btn-danger mt-3" @onclick="() => HandleDelete(car.Id)">Delete</button>
+                    </td>
+                </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td>No cars yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<ConfirmDelete IsParentComponentProcessing="IsProcessing" ConfirmationChanged="HandleConfirmDelete"></ConfirmDelete>
+
+@code {
+    private IEnumerable<CarDTO> Cars { get; set; } = new List<CarDTO>();
+
+    private int? DeleteCarId { get; set; }
+
+    private bool IsProcessing { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Cars = await CarRepo.GetAllCars();
+    }
+
+    private async Task HandleDelete(int carId)
+    {
+        DeleteCarId = carId;
+        await IJsRuntime.InvokeVoidAsync("ShowConfirmDelete");
+    }
+
+    public async Task HandleConfirmDelete(bool isConfirmed)
+    {
+        IsProcessing = true;
+        if (isConfirmed && DeleteCarId != null)
+        {
+            CarDTO car = await CarRepo.GetCar(DeleteCarId.Value);
+            foreach (var img in car.CarImages)
+            {
+                var imgName = img.CarImgUrl.Replace($"{NavigationManager.BaseUri}CarImages/", "");
+                FileUpload.DeleteFile(imgName);
+            }
+
+            await CarRepo.DeleteCar(DeleteCarId.Value);
+            await IJsRuntime.ToasterSuccess("Car deleted.");
+            Cars = await CarRepo.GetAllCars();
+        }
+        await IJsRuntime.InvokeVoidAsync("HideConfirmDelete");
+        IsProcessing = false;
+    }
+}

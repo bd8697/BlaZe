@@ -1,0 +1,15 @@
+D:\Work\BlaZe\BlaZe\DataAcces\bin\Release\net5.0\DataAcces.deps.json
+D:\Work\BlaZe\BlaZe\DataAcces\bin\Release\net5.0\DataAcces.runtimeconfig.json
+D:\Work\BlaZe\BlaZe\DataAcces\bin\Release\net5.0\DataAcces.runtimeconfig.dev.json
+D:\Work\BlaZe\BlaZe\DataAcces\bin\Release\net5.0\DataAcces.dll
+D:\Work\BlaZe\BlaZe\DataAcces\bin\Release\net5.0\ref\DataAcces.dll
+D:\Work\BlaZe\BlaZe\DataAcces\bin\Release\net5.0\DataAcces.pdb
+D:\Work\BlaZe\BlaZe\DataAcces\obj\Release\net5.0\DataAcces.csprojAssemblyReference.cache
+D:\Work\BlaZe\BlaZe\DataAcces\obj\Release\net5.0\DataAcces.GeneratedMSBuildEditorConfig.editorconfig
+D:\Work\BlaZe\BlaZe\DataAcces\obj\Release\net5.0\DataAcces.AssemblyInfoInputs.cache
+D:\Work\BlaZe\BlaZe\DataAcces\obj\Release\net5.0\DataAcces.AssemblyInfo.cs
+D:\Work\BlaZe\BlaZe\DataAcces\obj\Release\net5.0\DataAcces.csproj.CoreCompileInputs.cache
+D:\Work\BlaZe\BlaZe\DataAcces\obj\Release\net5.0\DataAcces.dll
+D:\Work\BlaZe\BlaZe\DataAcces\obj\Release\net5.0\ref\DataAcces.dll
+D:\Work\BlaZe\BlaZe\DataAcces\obj\Release\net5.0\DataAcces.pdb
+D:\Work\BlaZe\BlaZe\DataAcces\obj\Release\net5.0\DataAcces.genruntimeconfig.cache

@@ -1,0 +1,39 @@
+﻿@inject NavigationManager navMan
+
+@if(NotAuth)
+            {
+                <div>You are not authorized, sorry. :(</div>
+            }
+
+
+@code {
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; }
+
+    private bool NotAuth { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationState;
+
+        if(authState?.User?.Identity == null || !authState.User.Identity.IsAuthenticated)
+        {
+            var returnUrl = navMan.ToBaseRelativePath(navMan.Uri);
+            if (string.IsNullOrEmpty(returnUrl))
+            {
+                navMan.NavigateTo("login", true);
+            }
+            else
+            {
+                navMan.NavigateTo($"login?returnUrl={returnUrl}", true);
+            }
+        }
+        else
+        {
+            NotAuth = true;
+        }
+
+    }
+
+}

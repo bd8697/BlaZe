@@ -1,0 +1,96 @@
+﻿@page "/carFeature"
+@using Models
+@using Service.IService
+@using Business.Repository.IRepository
+@using Shared
+@inject ICarFeaturesRepo CarFeaturesRepo
+@inject IJSRuntime IJsRuntime
+@inject NavigationManager NavigationManager
+@attribute [Authorize(Roles = "Admin")]
+
+<div class="row mt-4">
+    <div class="col-8">
+        <h4 class="carFeatured-title text-info"> Car features</h4>
+    </div>
+    <div class="col-3 offset-1">
+        <NavLink href="carFeature/create" class=" btn btn-info form-control">
+            Add car feature
+        </NavLink>
+    </div>
+</div>
+<div class="row mt-4">
+    <div class="col-12">
+        <table class="table table-bordered table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Icon</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (CarFeatures.Any())
+                {
+                    foreach (var carFeature in CarFeatures)
+                    {
+                        <tr>
+                            <td>
+                                @carFeature.Name
+                            </td>
+                            <td>
+                                @carFeature.Details
+                            </td>
+                            <td>
+                                <i class="@carFeature.Icon"></i>
+                            </td>
+                            <td>
+                                <NavLink href="@($"carFeature/edit/{carFeature.Id}")" class="btn btn-primary">Edit</NavLink>
+                                <button class="btn btn-danger mt-3" @onclick="() => HandleDelete(carFeature.Id)">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td>No car features yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<ConfirmDelete IsParentComponentProcessing="IsProcessing" ConfirmationChanged="HandleConfirmDelete"></ConfirmDelete>
+
+@code {
+    private IEnumerable<CarFeatureDTO> CarFeatures { get; set; } = new List<CarFeatureDTO>();
+
+    private int? DeleteCarFeatureId { get; set; }
+
+    private bool IsProcessing { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CarFeatures = await CarFeaturesRepo.GetAllCarFeatures();
+    }
+
+    private async Task HandleDelete(int carFeatureId)
+    {
+        DeleteCarFeatureId = carFeatureId;
+        await IJsRuntime.InvokeVoidAsync("ShowConfirmDelete");
+    }
+
+    public async Task HandleConfirmDelete(bool isConfirmed)
+    {
+        IsProcessing = true;
+        if (isConfirmed && DeleteCarFeatureId != null)
+        {
+            CarFeatureDTO carFeature = await CarFeaturesRepo.GetCarFeature(DeleteCarFeatureId.Value);
+
+            await CarFeaturesRepo.DeleteCarFeature(DeleteCarFeatureId.Value);
+            await IJsRuntime.ToasterSuccess("Car feature deleted.");
+            CarFeatures = await CarFeaturesRepo.GetAllCarFeatures();
+        }
+        await IJsRuntime.InvokeVoidAsync("HideConfirmDelete");
+        IsProcessing = false;
+    }
+}

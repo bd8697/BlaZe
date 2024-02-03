@@ -1,0 +1,216 @@
+﻿@page "/order/edit/{Id:int}"
+@using Models 
+@using Common 
+@using Business.Repository.IRepository
+@inject IOrderRepo orderRepo
+
+<div class="mt-4 px-md-1 mx-md-1">
+    @if (IsLoading)
+    {
+        <div class="spinner"></div>
+    }
+    else
+    {
+        <div class="row p-2 my-3 bg-dark" style="border-radius:20px; ">
+            <div class="col-6 pt-2 pl-4 text-info">
+                <h2>Order: </h2>
+            </div>
+            <div class="col-6 pt-2 col-md-3 offset-md-3">
+                <a href="/order" class="btn btn-info form-control">Back</a>
+            </div>
+            <div class="col-12 col-lg-8 p-4">
+                <div class="row px-2 text-success border-bottom">
+                    <div class="col-8 py-1"><p style="font-size:x-large;margin:0px;">Rented car: </p></div>
+
+                </div>
+
+                <div class="row">
+                    <div class="col-7">
+                        <div id="" class="carousel slide mb-4 m-md-3 m-0 pt-3 pt-md-0" data-ride="carousel">
+                            <div id="carouselExampleIndicators" class="carousel slide" data-ride="carousel">
+                                <ol class="carousel-indicators">
+                                    @{
+                                        int imgIdx = 0;
+                                        int innerImgIdx = 0;
+                                    }
+                                    @foreach (var img in Order.CarDTO.CarImages)
+                                    {
+                                        if (imgIdx == 0)
+                                        {
+                                            <li data-target="#carouselExampleIndicators" data-slide-to="@imgIdx" class="active"></li>
+
+                                        }
+                                        else
+                                        {
+                                            <li data-target="#carouselExampleIndicators" data-slide-to="@imgIdx"></li>
+                                        }
+                                        imgIdx++;
+                                    }
+                                </ol>
+                                <div class="carousel-inner">
+                                    @foreach (var img in Order.CarDTO.CarImages)
+                                    {
+                                        if (innerImgIdx == 0)
+                                        {
+                                            <div class="carousel-item active">
+                                                <img class="d-block w-100" style="border-radius:20px;" src="@img.CarImgUrl" alt="First slide">
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="carousel-item">
+                                                <img class="d-block w-100" style="border-radius:20px;" src="@img.CarImgUrl" alt="First slide">
+                                            </div>
+                                        }
+                                        innerImgIdx++;
+                                    }
+                                </div>
+                                <a class="carousel-control-prev" href="#carouselExampleIndicators" role="button" data-slide="prev">
+                                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                    <span class="sr-only">Previous</span>
+                                </a>
+                                <a class="carousel-control-next" href="#carouselExampleIndicators" role="button" data-slide="next">
+                                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                    <span class="sr-only">Next</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-5">
+                        <span class="float-right pt-4 text-white-50">
+                            <span class="float-right">Seats: @Order.CarDTO.Seats seats </span><br />
+                            <span class="float-right pt-1">Transmission: @(Order.CarDTO.IsManual ? "manual" : "automatic")</span><br />
+                            <span class="float-right pt-1">Cost for @Order.CarDTO.TotalDays days.</span><br />
+                            <h4 class="text-warning font-weight-bold pt-5 float-right">
+                                <span style="border-bottom:1px solid #ff6a00">
+                                    @Order.CarDTO.TotalPrice
+                                </span>
+                                 USD
+                            </h4>
+
+                        </span>
+                    </div>
+                </div>
+                <div class="row p-2">
+                    <div class="col-12">
+                        <p class="card-title text-warning" style="font-size:xx-large">@Order.CarDTO.Name</p>
+                        <p class="card-text" style="font-size:large">
+                            @((MarkupString)@Order.CarDTO.Details)
+                        </p>
+                    </div>
+
+                </div>
+                <div class="row p-2">
+                    @if (Order.Status == Static.Status_Rented || Order.Status == Static.Status_Pending)
+                    {
+                        <div class="col-3">
+                            <button @onclick="CancelRent" class="btn btn-danger form-control">Cancel order</button>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-4 p-4 2 mt-4 mt-md-0">
+                <div class="row px-2 text-success border-bottom"><div class="col-7 py-1"><p style="font-size:x-large;margin:0px;">Details:</p></div></div>
+                <div class="form-group pt-2">
+                    <label class="text-warning">Order status</label>
+                    <input @bind-value="Order.Status" type="text" disabled class="form-control" />
+                </div>
+                <div class="form-group pt-2">
+                    <label class="text-warning">Name</label>
+                    <input @bind-value="Order.Name" type="text" disabled class="form-control" />
+                </div>
+                <div class="form-group pt-2">
+                    <label class="text-warning">Phone</label>
+                    <input @bind-value="Order.Phone" type="text" disabled class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label class="text-warning">Email</label>
+                    <input @bind-value="Order.Email" type="text" disabled class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label class="text-warning">Rent date</label>
+                    <input type="text" disabled value="@Order.StartDate.ToShortDateString()" class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <label class="text-warning">Return date</label>
+                    <input type="text" disabled value="@Order.EndDate.ToShortDateString()" class="form-control" />
+                </div>
+                @if (Order.Status == Static.Status_Rented || Order.Status == Static.Status_Completed)
+                {
+                    <div class="form-group">
+                        <label class="text-warning">True rent date</label>
+                        <input type="text" disabled value="@Order.TrueStartDate.ToShortDateString()" class="form-control" />
+                    </div>
+                }
+                @if (Order.Status == Static.Status_Completed)
+                {
+                    <div class="form-group">
+                        <label class="text-warning">True return Date</label>
+                        <input type="text" disabled value="@Order.TrueEndDate.ToShortDateString()" class="form-control" />
+                    </div>
+                }
+                <div class="form-group">
+
+                    @if (Order.Status == Static.Status_Rented)
+                    {
+                        <button @onclick="ConfirmRent" class="btn btn-success">Confirm rent</button>
+                    }
+
+                    @if (Order.Status == Static.Status_Rented)
+                    {
+                        <button @onclick="ConfirmEndRent" style= "float: right;" class="btn btn-success">Confirm return</button>
+                    }
+                </div>
+            </div>
+
+
+        </div>
+    }
+
+
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private bool IsLoading { get; set; } = false;
+
+    private OrderDTO Order { get; set; } = new OrderDTO() { CarDTO = new CarDTO() };
+
+    protected override async Task OnInitializedAsync()
+    {
+        IsLoading = true;
+
+        if(Id != null)
+        {
+            Order = await orderRepo.GetOrder(Id);
+        }
+        else
+        {
+            // error 
+        }
+
+        IsLoading = false;
+    }
+
+    private async Task ConfirmRent()
+    {
+        await orderRepo.UpdateOrderStatus(Order.Id, Static.Status_Rented);
+        Order = await orderRepo.GetOrder(Id);
+    }
+
+    private async Task ConfirmEndRent()
+    {
+        await orderRepo.UpdateOrderStatus(Order.Id, Static.Status_Completed);
+        Order = await orderRepo.GetOrder(Id);
+    }
+
+    private async Task CancelRent()
+    {
+        await orderRepo.UpdateOrderStatus(Order.Id, Static.Status_Cancelled);
+        Order = await orderRepo.GetOrder(Id);
+    }
+}

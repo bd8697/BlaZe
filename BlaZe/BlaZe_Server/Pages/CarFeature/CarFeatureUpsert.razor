@@ -1,0 +1,116 @@
+﻿@page "/carFeature/create"
+@page "/carFeature/edit/{Id:int}"
+@using Models
+@using Business.Repository.IRepository
+@using Service.IService
+@inject ICarFeaturesRepo CarFeaturesRepo
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+@attribute [Authorize(Roles = "Admin")]
+
+<div class="row mt-2 mb-5">
+    <h3 class="card-title text-info mb-3 ml-3">@Title car feature</h3>
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <EditForm Model="@CarFeatureModel" OnValidSubmit="@HandleUpsert">
+                    <DataAnnotationsValidator />
+                    @*<ValidationSummary />*@
+                    <div class="form-group">
+                        <label>Name</label>
+                        <InputText @bind-Value="CarFeatureModel.Name" class="form-control">
+
+                        </InputText>
+                        <ValidationMessage For="()=>CarFeatureModel.Name"></ValidationMessage>
+                    </div>
+                    <div class="form-group">
+                        <label>Details</label>
+                        <InputText @bind-Value="CarFeatureModel.Details" class="form-control">
+
+                        </InputText>
+                        <ValidationMessage For="()=>CarFeatureModel.Details"></ValidationMessage>
+                    </div>
+                    <div class="form-group">
+                        <label>Icon</label>
+                        <InputText @bind-Value="CarFeatureModel.Icon" class="form-control">
+
+                        </InputText>
+                        <ValidationMessage For="()=>CarFeatureModel.Icon"></ValidationMessage>
+                    </div>
+
+                    <div class="form-group">
+                        <button class="btn btn-primary">@Title</button>
+                        <NavLink href="carFeature" @onclick="HandleBack" class="btn btn-secondary">Back</NavLink> @*todo: delete temporary images onclick*@
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+    private CarFeatureDTO CarFeatureModel { get; set; } = new CarFeatureDTO();
+    private string Title { get; set; } = "Create";
+
+    private async Task HandleUpsert()
+    {
+        try
+        {
+            var carFeatureByName = await CarFeaturesRepo.IsCarFeatureUnique(CarFeatureModel.Name, CarFeatureModel.Id);
+            if (carFeatureByName != null)
+            {
+                await JsRuntime.ToasterFail("Car feature already exists!");
+                return;
+            }
+
+            if (CarFeatureModel.Id != 0)
+            {
+                //update
+                var updatedCarFeature = await CarFeaturesRepo.UpdateCarFeature(CarFeatureModel.Id, CarFeatureModel);
+                await JsRuntime.ToasterSuccess("CarFeature updated!");
+            }
+            else
+            {
+                //create
+                var createdCarFeature = await CarFeaturesRepo.CreateCarFeature(CarFeatureModel);
+                await JsRuntime.ToasterSuccess("CarFeature created!");
+            }
+        }
+        catch (Exception)
+        {
+            throw;
+        }
+
+        NavigationManager.NavigateTo("carFeature");
+    }
+
+    private void HandleBack()
+    {
+
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id != null)
+        {
+            //update
+            Title = "Update";
+            CarFeatureModel = await CarFeaturesRepo.GetCarFeature(Id.Value);
+        }
+        else
+        {
+            //create
+            CarFeatureModel = new CarFeatureDTO();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+    }
+}

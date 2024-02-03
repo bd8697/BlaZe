@@ -1,0 +1,328 @@
+﻿@page "/car/create"
+@page "/car/edit/{Id:int}"
+@using Models
+@using Business.Repository.IRepository
+@using Service.IService
+@inject ICarRepo CarRepo
+@inject ICarImagesRepo CarImagesRepo
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+@inject IFileUpload FileUpload
+@attribute [Authorize(Roles = "Admin")]
+
+<div class="row mt-2 mb-5">
+    <h3 class="card-title text-info mb-3 ml-3">@Title car</h3>
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <EditForm Model="@CarModel" OnValidSubmit="@HandleUpsert">
+                    <DataAnnotationsValidator />
+                    @*<ValidationSummary />*@
+                    <div class="form-group">
+                        <label>Name</label>
+                        <InputText @bind-Value="CarModel.Name" class="form-control">
+
+                        </InputText>
+                        <ValidationMessage For="()=>CarModel.Name"></ValidationMessage>
+                    </div>
+                    <div class="form-group">
+                        <label>IsManual</label>
+                        <InputCheckbox @bind-Value="CarModel.IsManual" class="form-control">
+
+                        </InputCheckbox>
+                        <ValidationMessage For="()=>CarModel.IsManual"></ValidationMessage>
+                    </div>
+                    <div class="form-group">
+                        <label>Seats</label>
+                        <InputNumber min="0" @bind-Value="CarModel.Seats" class="form-control">
+
+                        </InputNumber>
+                        <ValidationMessage For="()=>CarModel.Seats"></ValidationMessage>
+                    </div>
+                    <div class="form-group">
+                        <label>Price</label>
+                        <InputNumber min="0" @bind-Value="CarModel.Price" class="form-control">
+
+                        </InputNumber>
+                        <ValidationMessage For="()=>CarModel.Price"></ValidationMessage>
+                    </div>
+                    <div class="form-group" style="250px;">
+                        <label>Details</label>
+                        @*<InputTextArea @bind-Value="CarModel.Details" class="form-control"></InputTextArea>*@
+                        <BlazoredTextEditor @ref="@QuillHtml" Placeholder="Please eneter car details">
+                            <ToolbarContent>
+                                <select class="ql-header">
+                                    <option selected=""></option>
+                                    <option value="1"></option>
+                                    <option value="2"></option>
+                                    <option value="3"></option>
+                                    <option value="4"></option>
+                                    <option value="5"></option>
+                                </select>
+                                <span class="ql-formats">
+                                    <button class="ql-bold"></button>
+                                    <button class="ql-italic"></button>
+                                    <button class="ql-underline"></button>
+                                    <button class="ql-strike"></button>
+                                </span>
+                                <span class="ql-formats">
+                                    <select class="ql-color"></select>
+                                    <select class="ql-background"></select>
+                                </span>
+                                <span class="ql-formats">
+                                    <button class="ql-list" value="ordered"></button>
+                                    <button class="ql-list" value="bullet"></button>
+                                </span>
+                                <span class="ql-formats">
+                                    <button class="ql-link"></button>
+                                </span>
+                            </ToolbarContent>
+                            <EditorContent></EditorContent>
+                        </BlazoredTextEditor>
+                        <ValidationMessage For="()=>CarModel.Details"></ValidationMessage>
+                    </div>
+                    <div class="form-group">
+                        <InputFile OnChange="HandleImgUpload" multiple></InputFile>
+                        <div class="row">
+                            @if (UploadingImage)
+                            {
+                                <div class="col=md-12">
+                                    <span><i class="fa fa-spin fa-spinner"></i> Uploading images...</span>
+                                </div>
+                            }
+
+                            @if (CarModel.ImageUrls != null)
+                            {
+                                int serial = 1;
+                                foreach (var carImage in CarModel.ImageUrls)
+                                {
+                                    <div class="col-md-2 mt-3">
+                                        <div class="car-image" style="background: url('@carImage') 50% 50%"></div>
+                                        <span class="car-image-title">@serial</span>
+                                        <button type="button" @onclick="() => DeleteImage(carImage)" class="btn btn-outline-danger btn-block mt-4">Delete</button>
+                                    </div>
+                                    serial++;
+                                }
+                            }
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <button class="btn btn-primary">@Title car</button>
+                        <NavLink href="car" @onclick="HandleBack" class="btn btn-secondary">Back</NavLink> @*todo: delete temporary images onclick*@
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+    private CarDTO CarModel { get; set; } = new CarDTO();
+    private CarImageDTO CarImageModel { get; set; } = new CarImageDTO();
+    private string Title { get; set; } = "Create";
+    private List<string> DeletedImgs { get; set; } = new List<string>();
+    private List<string> TempImgs { get; set; } = new List<string>();
+    private bool UploadingImage { get; set; } = false;
+    public BlazoredTextEditor QuillHtml { get; set; } = new BlazoredTextEditor();
+
+    [CascadingParameter]
+    public Task<AuthenticationState> AuthenticationState { get; set; }
+
+    private async Task HandleUpsert()
+    {
+        try
+        {
+            var carByName = await CarRepo.IsCarUnique(CarModel.Name, CarModel.Id);
+            if (carByName != null)
+            {
+                await JsRuntime.ToasterFail("Car already exists!");
+                return;
+            }
+
+            await GetQuillHTML(CarModel);
+
+            if (CarModel.Id != 0)
+            {
+                //update
+                var updatedCar = await CarRepo.UpdateCar(CarModel.Id, CarModel);
+                if (CarModel.ImageUrls != null)
+                {
+                    foreach (var deletedImgName in DeletedImgs)
+                    {
+                        var imgName = deletedImgName.Replace($"{NavigationManager.BaseUri}CarImages/", "");
+                        var deletedImg = FileUpload.DeleteFile(imgName);
+                        await CarImagesRepo.DeleteCarImageByUrl(deletedImgName);
+                    }
+
+                    await AddCarImage(updatedCar);
+                }
+                await JsRuntime.ToasterSuccess("Car updated!");
+            }
+            else
+            {
+                //create
+                var createdCar = await CarRepo.CreateCar(CarModel);
+                await AddCarImage(createdCar);
+                //todo: handle deletedImages here as well
+                await JsRuntime.ToasterSuccess("Car created!");
+            }
+        }
+        catch (Exception)
+        {
+            throw;
+        }
+
+        NavigationManager.NavigateTo("car");
+    }
+
+    private async Task HandleImgUpload(InputFileChangeEventArgs e)
+    {
+        UploadingImage = true;
+        try
+        {
+            var images = new List<string>();
+            if (e.GetMultipleFiles().Count > 0)
+            {
+                foreach (var file in e.GetMultipleFiles())
+                {
+                    System.IO.FileInfo fileInfo = new System.IO.FileInfo(file.Name);
+                    if (fileInfo.Extension.ToLower() == ".jpg" || fileInfo.Extension.ToLower() == ".png" || fileInfo.Extension.ToLower() == ".jpeg")
+                    {
+                        var uploadedImgPath = await FileUpload.UploadFile(file);
+                        images.Add(uploadedImgPath);
+                    }
+                }
+
+                if (images.Any())
+                {
+                    CarModel.ImageUrls.AddRange(images);
+                    TempImgs.AddRange(images);
+                }
+                else
+                {
+                    await JsRuntime.ToasterFail("Image upload failed.");
+                    return;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.ToasterFail(ex.Message);
+        }
+        UploadingImage = false;
+    }
+
+    private void HandleBack()
+    {
+        foreach (var tempImg in TempImgs)
+        {
+            var imgName = tempImg.Replace($"{NavigationManager.BaseUri}CarImages/", "");
+            var deletedImg = FileUpload.DeleteFile(imgName);
+        }
+    }
+
+    private async Task AddCarImage(CarDTO CarDTO)
+    {
+        foreach (var imgUrl in CarModel.ImageUrls)
+        {
+            if (CarModel.CarImages == null || CarModel.CarImages.Where(x => x.CarImgUrl == imgUrl).Count() == 0) //isn't it easier to just overwrite everything?
+            {
+                CarImageModel = new CarImageDTO()
+                {
+                    CarId = CarDTO.Id,
+                    CarImgUrl = imgUrl
+                };
+                await CarImagesRepo.CreateCarImage(CarImageModel);
+            }
+        }
+    }
+
+    private async Task DeleteImage(string imgUrl)
+    {
+        try
+        {
+            var imgIdx = CarModel.ImageUrls.FindIndex(x => x == imgUrl);
+            var imgName = imgUrl.Replace($"{NavigationManager.BaseUri}CarImages/", "");
+            if (CarModel.Id == 0) // we're creating
+            {
+                var deletedImg = FileUpload.DeleteFile(imgName);
+            }
+            else // we're updating
+            {
+                DeletedImgs.Add(imgUrl);
+            }
+            CarModel.ImageUrls.RemoveAt(imgIdx);
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.ToasterFail(ex.Message);
+        }
+    }
+
+    public async Task SetQuillHTML() //ewww
+    {
+        bool loading = true;
+        while (loading)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(CarModel.Details))
+                {
+                    await this.QuillHtml.LoadHTMLContent(CarModel.Details);
+                }
+                loading = false;
+            }
+            catch (Exception)
+            {
+                await Task.Delay(10);
+                loading = true;
+            }
+        }
+        StateHasChanged();
+    }
+
+    public async Task GetQuillHTML(CarDTO car)
+    {
+        car.Details = await this.QuillHtml.GetHTML();
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationState;
+        if(!authState.User.Identity.IsAuthenticated)
+        {
+            var uri = new Uri(NavigationManager.Uri);
+
+            NavigationManager.NavigateTo($"/identity/account/login?returnUrl={uri.LocalPath}");
+        }
+        if (Id != null)
+        {
+            //update
+            Title = "Update";
+            CarModel = await CarRepo.GetCar(Id.Value);
+            if (CarModel?.CarImages != null)
+            {
+                CarModel.ImageUrls = CarModel.CarImages.Select(u => u.CarImgUrl).ToList();
+            }
+        }
+        else
+        {
+            //create
+            CarModel = new CarDTO();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await SetQuillHTML();
+    }
+}

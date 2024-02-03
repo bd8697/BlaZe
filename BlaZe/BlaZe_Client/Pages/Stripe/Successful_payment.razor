@@ -1,0 +1,49 @@
+﻿@page "/successful-payment"
+@inject ILocalStorageService localStorage
+@inject IOrderService orderService
+
+@attribute [Authorize(Roles = "Customer")]
+@if (!isPaymentComplete)
+{
+    <div id="app">
+        <div style="position:fixed;top:50%;left:50%;margin-top:-50px;margin-left:-100px;"><img src="images/ajax-loader.gif" /></div>
+    </div>
+}
+else
+{
+    <div class="row mt-4 pt-4">
+        <div class="col-10 offset-1 text-center">
+            <h1 class="text-warning">Order confirmed</h1>
+            <h5>The car has been rented successfully with order id @OrderId.</h5>
+        </div>
+        <div class="col-8 offset-2">
+            <img src="@rndImg" style="border-radius:30px; max-width:100%" />
+        </div>
+    </div>
+}
+
+
+
+@code {
+    private bool isPaymentComplete = false;
+    private int OrderId { get; set; }
+
+    private string rndImg;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var order = await localStorage.GetItemAsync<OrderDTO>(Static.Order);
+
+        var finalOrder = await orderService.MarkPaymentSucc(order);
+        if (finalOrder.Status == Static.Status_Rented)
+        {
+            await localStorage.RemoveItemAsync(Static.Order);
+            await localStorage.RemoveItemAsync(Static.initDates);
+
+            isPaymentComplete = true;
+        }
+
+        OrderId = finalOrder.Id;
+        rndImg = new Random().Next(0,2) == 0 ? "images/bg1_X_x2.png" : "images/bg2_X_x2.png";
+    }
+}

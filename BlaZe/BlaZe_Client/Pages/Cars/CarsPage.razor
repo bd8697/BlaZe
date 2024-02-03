@@ -1,0 +1,158 @@
+﻿@page "/cars"
+@inject ILocalStorageService localStorage
+@inject IJSRuntime jsRuntime
+@inject ICarService carService
+
+
+@if (Cars != null && Cars.Any())
+{
+
+    <EditForm Model="HomeModel" OnValidSubmit="SaveRentInfo" class="bg-light">
+
+        <div class="pt-3 pb-2 px-5 mx-1 mx-md-0 bg-secondary">
+            <DataAnnotationsValidator />
+            <div class="row px-3 mx-3">
+                <div class="col-6 col-md-4">
+                    <div class="form-group">
+                        <label class="text-warning input-label">Rent date</label>
+                        <InputDate @bind-Value="HomeModel.StartDate " class="form-control" />
+                    </div>
+                </div>
+                <div class="col-6 col-md-4">
+                    <div class="form-group">
+                        <label class="text-warning input-label">Return date</label>
+                        <input @bind="HomeModel.EndDate" disabled="disabled" readonly="readonly" type="date" class="form-control" />
+                    </div>
+                </div>
+                <div class=" col-4 col-md-2">
+                    <div class="form-group">
+                        <label class="text-warning input-label">Days</label>
+                        <InputNumber min="0" @bind-Value="HomeModel.noOfDays" class="form-control">
+
+                        </InputNumber>
+                    </div>
+                </div>
+
+                <div class="col-8 col-md-2">
+                    <div class="form-group" style="margin-top: 1.9rem !important;">
+                        @if (IsProcessing)
+                        {
+                            <button class="btn btn-success btn-block form-control"><i class="fa fa-spin fa-spinner"></i></button>
+                        }
+                        else
+                        {
+                            <input type="submit" value="Update" class="btn btn-success btn-block form-control" />
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+
+    <br />
+    <h3 class="card-title text-warning" style="display:inline;">Order by</h3>
+        <div class="col-6 col-md-4" style="display:inline-grid">
+            <div class="form-group">
+                <select class="form-control" @bind="@OrderBy">
+                    <option value="@Static.OrderBy_Name">@Static.OrderBy_Name</option>
+                    <option value="@Static.OrderBy_Price">@Static.OrderBy_Price</option>
+                    <option value="@Static.OrderBy_Availability">@Static.OrderBy_Availability</option>
+                </select>
+            </div>
+        </div>
+    <br>
+
+        <CarList Cars="@Cars"> </CarList>
+        }
+        else
+        {
+        <div style="position:fixed;top:50%;left:50%;margin-top:-50px;margin-left:-100px;">
+            <img src="images/ajax-loader.gif" />
+        </div>
+        }
+
+        @code {
+    private HomeVM HomeModel { get; set; } = new HomeVM();
+        public IEnumerable<CarDTO> Cars { get; set; } = new List<CarDTO>();
+        private bool IsProcessing { get; set; } = false;
+
+        private int manualCarouselIters = 3;
+        private string orderBy;
+        public string OrderBy { get => orderBy; set { orderBy = value; ReOrder(); } }
+
+        protected override async Task OnInitializedAsync()
+        {
+            try
+            {
+                HomeModel = await localStorage.GetItemAsync<HomeVM>(Static.initDates);
+                if (HomeModel == null)
+                {
+                    HomeModel.noOfDays = 1;
+                }
+                await LoadCars();
+                StartCarousels(); // not awaited on purpose
+            }
+            catch (Exception e)
+            {
+                await jsRuntime.ToasterFail(e.Message);
+            }
+        }
+
+        private async Task LoadCars()
+        {
+            Cars = await carService.GetCars(HomeModel.StartDate.ToString("MM/dd/yyyy"), HomeModel.EndDate.ToString("MM/dd/yyyy"));
+
+            foreach (var car in Cars)
+            {
+                car.TotalDays = HomeModel.noOfDays;
+                car.TotalPrice = car.Price * car.TotalDays;
+            }
+            StateHasChanged();
+        }
+
+        private async Task SaveRentInfo()
+        {
+            IsProcessing = true;
+            HomeModel.EndDate = HomeModel.StartDate.AddDays(HomeModel.noOfDays);
+            await localStorage.SetItemAsync(Static.initDates, HomeModel);
+            await LoadCars();
+            IsProcessing = false;
+        }
+
+        private async void ReOrder()
+        {
+            switch (OrderBy)
+            {
+                case Static.OrderBy_Name:
+                    {
+                        Cars = Cars.OrderBy(o => o.Name).ToList();
+                        break;
+                    }
+                case Static.OrderBy_Price:
+                    {
+                        Cars = Cars.OrderBy(o => o.TotalPrice).ToList();
+                        break;
+                    }
+                case Static.OrderBy_Availability:
+                    {
+                        Cars = Cars.OrderBy(o => o.IsRented).ToList();
+                        break;
+                    }
+            }
+            await jsRuntime.InvokeVoidAsync("ResetCarousel", "doesntMatter");
+            StateHasChanged();
+        }
+
+        private async Task StartCarousels()
+        {
+            for (int i = 0; i < manualCarouselIters; i++)
+            {
+                await Task.Delay(5000);
+                foreach (var car in Cars)
+                {
+                    await Task.Delay(500);
+                    await jsRuntime.InvokeVoidAsync("ClickMe", "carouselNext" + car.Id);
+                }
+            }
+        }
+        }
